@@ -1,0 +1,328 @@
+---
+title: "Weather"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(lubridate)
+library(smacof)
+library(tidyverse)
+library(vegan)
+library(forecast)
+```
+
+This notebook contains the basis for the weather data analysis (2019,2020) for ts-mds
+```{r}
+temp <- read.csv("temperature.csv")
+temp$Date <- as.Date(temp$datetime)
+
+temp$Month <- floor_date(temp$Date, "month")
+monthly_temp <- temp %>%
+  group_by(Month) %>%
+summarise_at(c(colnames(temp)[2:37]), mean, na.rm = TRUE)
+monthly_temp <- as.data.frame(monthly_temp)
+monthly_temp <- monthly_temp[28:39,]
+rownames(monthly_temp) <- 1:nrow(monthly_temp)
+monthly_temp[,2:ncol(monthly_temp)] <- monthly_temp[,2:ncol(monthly_temp)] - 273.15
+colnames(monthly_temp)
+monthly_temp <- monthly_temp[,c("Month", "Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")]
+
+
+hum <- read.csv("humidity.csv")
+hum$Date <- as.Date(hum$datetime)
+hum$Month <- floor_date(hum$Date, "month")
+monthly_hum <- hum %>%
+  group_by(Month) %>%
+summarise_at(c(colnames(hum)[2:37]), mean, na.rm = TRUE)
+monthly_hum <- as.data.frame(monthly_hum)
+monthly_hum <- monthly_hum[28:39,]
+rownames(monthly_hum) <- 1:nrow(monthly_hum)
+monthly_hum <- monthly_hum[,c("Month", "Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")]
+
+
+vancouver_ts <- ts(data = 100-(monthly_hum$Vancouver), start = c(2015, 1), end = c(2015, 12),  frequency = 12)
+
+ggseasonplot(vancouver_ts)
+plot(stl(vancouver_ts, s.window="periodic"))
+autoplot(vancouver_ts)
+
+monthly_df <- cbind(gather(monthly_temp, City, Temperature, Vancouver:Jerusalem, factor_key=TRUE), gather(monthly_hum, City, Humidity, Vancouver:Jerusalem, factor_key=TRUE))
+monthly_df[,4:5] <- NULL
+monthly_df <- monthly_df[order(monthly_df$Month),]
+rownames(monthly_df) <- monthly_df$Month
+monthly_df[,3:4]
+
+# Data from Proxmap pre Procrustus
+options(digits=16)
+
+jan_2015 <- as.data.frame(rbind(
+c(12.394756978901086, 2.443643797156644), 
+c(7.791619955195406, 6.355642359287834), 
+c(-26.712794300754883, 0.384698245048687), 
+c(-26.239858829244575, -0.057992277863156), 
+c(13.916723110934029, -8.698129315972926), 
+c(13.406261627726016, -10.499164956945627), 
+c(-5.680368747250975, -10.417575002877506), 
+c(-9.011265093771502, 4.623005510183729), 
+c(12.246464385977484, 11.031587591854183), 
+c(7.888460912287916, 4.834284050128138)))
+rownames(jan_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(jan_2015) <- c("Average monthly temperature", "Average humidity")
+
+feb_2015 <- as.data.frame(rbind(c(13.451786514250236, 7.302879159835997),
+c(5.127476731069917, 9.827709900560937), 
+c(-19.196450775260640, -0.164229812125135), 
+c(-27.364147441516273, -1.823396935145419), 
+c(9.500022101817473, -13.265753183163605), 
+c(13.599776204566295, -13.447313323510027), 
+c(2.331006896360875, -12.460784404185160), 
+c(-11.644278495105860, 3.157153416409677), 
+c(10.538598943966225, 14.053134312407261), 
+c(3.656209319851751, 6.820600868915466)))
+rownames(feb_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(feb_2015) <- c("Average monthly temperature", "Average humidity")
+
+mar_2015 <- as.data.frame(rbind(c(15.208914205778237, 0.718051362013560),
+c(9.430385348271923, 5.185129672409149), 
+c(-25.692717258251040, -0.153377518048626), 
+c(-36.587345620360715, 0.138296878509974), 
+c(8.498827529945318, -8.606741225618471), 
+c(11.193887334722543, -10.124724792259189), 
+c(3.084930530576154, -8.456403294272635), 
+c(-2.461438890332679, 5.313789936193776), 
+c(13.282675000287041, 11.074424242587295), 
+c(4.041881819363215, 4.911554738485171)))
+rownames(mar_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(mar_2015) <- c("Average monthly temperature", "Average humidity")
+
+apr_2015 <- as.data.frame(rbind(c(17.655672714448855, 3.560003155853278),
+c(8.869975257197456, -0.612100423008668), 
+c(-17.212172476909085, 0.151222429255795), 
+c(-42.217539866534551, -3.621033813979305), 
+c(1.933813269722397, 5.289915985455195), 
+c(2.926156335460157, 6.728009362319639), 
+c(-9.937435826172695, 2.995303427514328), 
+c(11.174112676697016, -4.460153300247029), 
+c(21.548390857086023, -6.461397585213517), 
+c(5.259027059004429, -3.569769237949718))) 
+rownames(apr_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(apr_2015) <- c("Average monthly temperature", "Average humidity")
+
+may_2015 <- as.data.frame(rbind(c(17.078296529012913, 1.732781547084585),
+c(13.609883412371191, 3.078676812358210), 
+c(-0.334579283713238, 2.642227597081598),
+c(-36.042542300439649, -1.896786229952708), 
+c(0.973195916402044, 4.722920271479136), 
+c(-5.443008117195128, 3.843444039622674), 
+c(-13.429747181162472, -0.518541624775884), 
+c(11.789810009013200, -4.823342695795842), 
+c(17.502662607603192, -5.293189473695318), 
+c(-5.703971591892049, -3.488190243406451))) 
+rownames(may_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(may_2015) <- c("Average monthly temperature", "Average humidity")
+
+jun_2015 <- as.data.frame(rbind(c(0.767103006933246, 2.908645614859886),
+c(10.878021525970237, 2.769827331970785), 
+c(-2.638262784258214, 0.295288235535812), 
+c(-45.480630039518466, -0.652147699499858), 
+c(8.366153702761675, 3.250794183136428), 
+c(9.950239962685371, 3.327285658499236), 
+c(1.872500744679441, 0.189197709287065), 
+c(1.562600662335666, -2.652252629288018), 
+c(15.352364137023466, -7.739877747976831), 
+c(-0.630090918612428, -1.696760656524505))) 
+rownames(jun_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(jun_2015) <- c("Average monthly temperature", "Average humidity")
+
+jul_2015 <- as.data.frame(rbind(c(5.201093710140334, 3.995604795051256), 
+c(10.126264475261850, 2.730304609537784), 
+c(5.335956135378543, 1.284023685759256), 
+c(-37.892529943187327, -1.677327423645162), 
+c(-2.294801077266099, 3.530031822282415), 
+c(2.206803049607986, 3.415001431570446), 
+c(2.146024642880032, 0.508711936403699), 
+c(4.721637060810773, -3.177687734187086), 
+c(12.538210979181136, -8.649847172219500), 
+c(-2.088659032807235, -1.958815950553105))) 
+rownames(jul_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(jul_2015) <- c("Average monthly temperature", "Average humidity")
+
+aug_2015 <- as.data.frame(rbind(c(8.666089394381665, 4.735113417987676),
+c(9.336522452538707, 2.672777077137283), 
+c(1.084866052842814, 0.580328991945300), 
+c(-34.180069796794044, 0.146952967392543), 
+c(-0.829104554382909, 4.448591322860790), 
+c(8.930218219335567, 3.410657490433207), 
+c(-1.051808160826988, 1.942505653922580), 
+c(1.917408881762997, -4.608517771800744), 
+c(8.804177956760054, -9.857068154786427), 
+c(-2.678300445617858, -3.471340995092206)))
+rownames(aug_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(aug_2015) <- c("Average monthly temperature", "Average humidity")
+
+sept_2015 <- as.data.frame(rbind(c(18.631646003452417, 3.845651138843712),
+c(4.796449446340936, 2.505116160832074), 
+c(-3.042884774802364, 0.634208374457262), 
+c(-28.425952594014195, 4.330624671505852), 
+c(1.010480471712492, 3.831603579614160), 
+c(10.258980976570744, 1.216278667562765), 
+c(2.785774503599000, 1.610802045036033), 
+c(-1.379046050677563, -5.227623836636311), 
+c(0.607685286769665, -9.146235771499361), 
+c(-5.243133268951135, -3.600425029716186)))
+rownames(sept_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(sept_2015) <- c("Average monthly temperature", "Average humidity")
+
+oct_2015 <- as.data.frame(rbind(c(20.083562431079311, 0.927037224863814), 
+c(6.683727831063281, -1.111519711675040), 
+c(-10.447853859424429, 0.595066273242008), 
+c(-22.643489582996079, 2.588473061498573), 
+c(-0.711053299482538, 7.026323283520246), 
+c(7.548203337863641, 6.820593252099949), 
+c(0.656394741399519, 6.552135961184447), 
+c(-1.886798836451620, -6.904539434199874), 
+c(1.653579055811602, -9.891592753402710),
+c(-0.936271818862694, -6.601977157131411))) 
+rownames(oct_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(oct_2015) <- c("Average monthly temperature", "Average humidity")
+
+nov_2015 <- as.data.frame(rbind(c(23.206194331575375, 3.429018970430977), 
+c(5.272834819815621, 0.464932219758766), 
+c(-22.388159263506363, 3.092822220260444), 
+c(-23.203798412933647, 4.303107133807913), 
+c(9.327489794203322, 3.758072590390568), 
+c(13.989843690004989, 3.368567247248135), 
+c(-0.632540456873722, 3.266042618956498), 
+c(-6.121008878361070, -5.901169510722084), 
+c(6.542499161517871, -9.871906217619124), 
+c(-5.993354785442380, -5.909487272512094))) 
+rownames(nov_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(nov_2015) <- c("Average monthly temperature", "Average humidity")
+
+dec_2015 <- as.data.frame(rbind(c(17.435236810281015, 3.083964797538584), 
+c(7.166091797271050, -0.647545137170455), 
+c(-20.101295550710283, 1.690323788297062), 
+c(-26.193366198442892, 4.985667413165906), 
+c(12.657257109333621, 3.589091650851448), 
+c(13.991490334532887, 3.203370917870807), 
+c(3.883929323787357, 0.722069147489752), 
+c(-6.433489134347973, -4.196564649832423), 
+c(3.750774304317511, -8.189876586203173), 
+c(-6.156628796022289, -4.240501342007507))) 
+rownames(dec_2015) <- c("Vancouver", "San.Francisco", "Los.Angeles", "Phoenix", "Chicago", "Toronto", "New.York", "Tel.Aviv.District", "Haifa", "Jerusalem")
+colnames(dec_2015) <- c("Average monthly temperature", "Average humidity")
+
+monthly_df[,3:4]
+
+
+proc_feb_2015 <- procrustes(jan_2015, feb_2015)$Yrot
+proc_mar_2015 <- procrustes(proc_feb_2015, mar_2015)$Yrot
+proc_apr_2015 <- procrustes(proc_mar_2015, apr_2015)$Yrot
+proc_may_2015 <- procrustes(proc_apr_2015, may_2015)$Yrot
+proc_jun_2015 <- procrustes(proc_may_2015, jun_2015)$Yrot
+proc_jul_2015 <- procrustes(proc_jun_2015, jul_2015)$Yrot
+proc_aug_2015 <- procrustes(proc_jul_2015, aug_2015)$Yrot
+proc_sept_2015 <- procrustes(proc_aug_2015, sept_2015)$Yrot
+proc_oct_2015 <- procrustes(proc_sept_2015, oct_2015)$Yrot
+proc_nov_2015 <- procrustes(proc_oct_2015, nov_2015)$Yrot
+proc_dec_2015 <- procrustes(proc_nov_2015, dec_2015)$Yrot
+#proc_jan_2016 <- procrustes(proc_dec_2015, jan_2016)$Yrot
+#proc_feb_2016 <- procrustes(proc_jan_2016, feb_2016)$Yrot
+#proc_mar_2016 <- procrustes(proc_feb_2016, mar_2016)$Yrot
+#proc_apr_2016 <- procrustes(proc_mar_2016, apr_2016)$Yrot
+
+
+colnames(jan_2015) <- colnames(proc_feb_2015) <- colnames(proc_mar_2015) <- colnames(proc_apr_2015) <- colnames(proc_may_2015) <- colnames(proc_jun_2015) <- colnames(proc_jul_2015) <- colnames(proc_aug_2015) <- colnames(proc_sept_2015) <- colnames(proc_oct_2015) <- colnames(proc_nov_2015) <- colnames(proc_dec_2015) <- c("Dim_1", "Dim_2")
+
+rownames(jan_2015) <- rownames(proc_feb_2015) <- rownames(proc_mar_2015) <- rownames(proc_apr_2015) <- rownames(proc_may_2015) <- rownames(proc_jun_2015) <- rownames(proc_jul_2015) <- rownames(proc_aug_2015) <- rownames(proc_sept_2015) <- rownames(proc_oct_2015) <- rownames(proc_nov_2015) <- rownames(proc_dec_2015) <- rownames(jan_2015)
+
+
+conf_df <- as.data.frame(rbind(jan_2015, proc_feb_2015, proc_mar_2015, proc_apr_2015, proc_may_2015, proc_jun_2015, proc_jul_2015, proc_aug_2015, proc_sept_2015, proc_oct_2015, proc_nov_2015, proc_dec_2015))
+conf_df <- cbind(conf_df, rbind(cbind(rep("Jan", 10)), cbind(rep("Feb", 10)), cbind(rep("Mar", 10)), cbind(rep("Apr", 10)), cbind(rep("May", 10)), cbind(rep("Jun", 10)), cbind(rep("Jul", 10)), cbind(rep("Aug", 10)), cbind(rep("Sept", 10)), cbind(rep("Oct", 10)), cbind(rep("Nov", 10)), cbind(rep("Dec", 10))))
+conf_df <- cbind(conf_df, rep(rownames(jan_2015), 12))
+colnames(conf_df) <- c("Dim_1", "Dim_2", "Month", "Country")
+
+conf_df <- conf_df[order(conf_df$Country),]
+
+x1 <- numeric(11)
+x2 <- numeric(11)
+y1 <- numeric(11)
+y2 <- numeric(11)
+for(i in 1:length(unique(conf_df$Country))){
+  x1[i] <- conf_df[which(conf_df$Country == unique(conf_df$Country)[i])[1:11], ]["Dim_1"]
+  x2[i] <- conf_df[which(conf_df$Country == unique(conf_df$Country)[i])[2:12], ]["Dim_1"]
+  y1[i] <- conf_df[which(conf_df$Country == unique(conf_df$Country)[i])[1:11], ]["Dim_2"]
+  y2[i] <- conf_df[which(conf_df$Country == unique(conf_df$Country)[i])[2:12], ]["Dim_2"]
+
+}
+x1 <- cbind(unlist(x1)[1:110])
+x2 <- cbind(unlist(x2)[1:110])
+y1 <- cbind(unlist(y1)[1:110])
+y2 <- cbind(unlist(y2)[1:110])
+
+transition_df <- as.data.frame(cbind(x1, x2, y1, y2))
+transition_df <- cbind(transition_df, rep(unique(conf_df$Country), each = 11))
+colnames(transition_df) <- c("x1", "x2", "y1", "y2", "Country")
+
+
+conf_df_2 <- conf_df
+conf_df_2$Year_2 <- cbind(rep(c("Jan 2015", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " "), 10))
+points <- ggplot(conf_df_2, aes(x = Dim_1, y = Dim_2, color = Country)) + 
+  geom_point() +
+  geom_text(aes(label=Year_2),  position = position_nudge(x = +0.1, y = +0.1))+
+  xlab("Dimension 1") +
+  ylab("Dimension 2") +
+  xlim(-35,15) +
+  ylim(-35,15) 
+  
+points +
+ geom_segment(mapping = aes(x = x1, y = y1, xend = x2, yend = y2, colour = Country), arrow = arrow(), data = transition_df)
+
+
+x1_jan <- rbind(4.082168408697, -34.838697783093)
+x2_jan <- rbind(-4.159310599338, 22.042626593272)
+y1_jan <- rbind(-28.174450870728, -5.047744573366)
+y2_jan <- rbind(28.706873505637, 3.193734434670)
+x1_feb <- rbind(10.318778438277,-35.556932170733)
+x2_feb <- rbind(-10.539114286297, 21.792560933783)
+y1_feb <- rbind(-28.371836057809, -12.877722487194)
+y2_feb <- rbind(28.977657046706, 7.892653692478)
+x1_mar <- rbind(7.021209322382, -46.946597585589)
+x2_mar <- rbind(-7.207558309803, 25.568166171006)
+y1_mar <- rbind(-35.782532153133, -9.146168145202)
+y2_mar <- rbind(36.732231603461, 4.981207563299)
+property_df <- as.data.frame(rbind(cbind(x1_jan, x2_jan, y1_jan, y2_jan), cbind(x1_feb, x2_feb, y1_feb, y2_feb), cbind(x1_mar, x2_mar, y1_mar, y2_mar)))
+property_df <- cbind(property_df, cbind(rep(c("Average monthly temperature", "Average humidity"), 3)))
+property_df <- cbind(property_df, cbind(c("Jan", "Jan", "Feb, Feb, Mar, Mar")))
+colnames(property_df) <- c("x1", "x2", "y1", "y2", "Properties", "Year")
+
+
+
+conf_df_3 <- conf_df
+conf_df_3$Year_2 <- cbind(rep(c("Jan", " ",  " ",  " ",  " ",  " ",  "Jul",  " ",  " ", " ",  " ",  "Dec"), 10))
+
+points <- ggplot(conf_df_3, aes(x = Dim_1, y = Dim_2, color = Country)) + 
+  geom_point() +
+  geom_text(aes(label=Year_2),  position = position_nudge(x = +0.1, y = +0.1))+
+  xlab("Dimension 1") +
+  ylab("Dimension 2") +
+  xlim(-47,37) +
+  ylim(-47,37) +
+  scale_color_brewer(palette="Paired")
+points +
+ geom_segment(mapping = aes(x = x1, y = y1, xend = x2, yend = y2, colour = Country), size = 0.5, data = transition_df) +
+ geom_segment(mapping = aes(x = x1, y = y1, xend = x2, yend = y2, colour = Properties), arrow = arrow(), data = property_df, linetype="dashed")
+
+ggplot(monthly_df, aes(x=Month, y=Temperature, group=City)) +
+  geom_line(aes(color=City))
+ggplot(monthly_df, aes(x=Month, y=Humidity, group=City)) +
+  geom_line(aes(color=City))
+
+
+
+
+
+unique(conf_df$Year)
+```
